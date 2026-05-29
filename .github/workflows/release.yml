@@ -18,7 +18,9 @@ jobs:
       - name: Get plugin metadata
         id: meta
         run: |
-          PLUGIN_SLUG=$(basename "$(pwd)")
+          # Plugin slug from main PHP file (handles case mismatch between repo name and file name).
+          PLUGIN_FILE=$(grep -rPl 'Plugin Name\s*:' --include='*.php' --max-depth=1 . | head -1)
+          PLUGIN_SLUG=$(basename "${PLUGIN_FILE%.php}")
           VERSION="${GITHUB_REF#refs/tags/}"
           echo "slug=${PLUGIN_SLUG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -41,11 +43,11 @@ jobs:
 
       - run: composer install --no-dev --no-interaction --optimize-autoloader
 
-      - name: Build JS assets
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - run: npm ci && npm run build
 
       - name: Create plugin zip
@@ -53,27 +55,8 @@ jobs:
           SLUG: ${{ steps.meta.outputs.slug }}
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          rsync -av \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='.husky' \
-            --exclude='node_modules' \
-            --exclude='tests' \
-            --exclude='src' \
-            --exclude='.wp-env.json' \
-            --exclude='package.json' \
-            --exclude='package-lock.json' \
-            --exclude='composer.lock' \
-            --exclude='phpcs.xml.dist' \
-            --exclude='phpunit.xml.dist' \
-            --exclude='playwright.config.ts' \
-            --exclude='.gitignore' \
-            --exclude='.editorconfig' \
-            --exclude='debug.log' \
-            --exclude='db.sql' \
-            --exclude='bin' \
-            ./ "${SLUG}/"
-          zip -r "${SLUG}-${VERSION}.zip" "${SLUG}/"
+          node node_modules/@wordpress/scripts/scripts/plugin-zip.js
+          mv "${SLUG}.zip" "${SLUG}-${VERSION}.zip"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
