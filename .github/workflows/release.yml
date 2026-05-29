@@ -18,9 +18,8 @@ jobs:
       - name: Get plugin metadata
         id: meta
         run: |
-          # Plugin slug from main PHP file (handles case mismatch between repo name and file name).
-          PLUGIN_FILE=$(grep -rPl 'Plugin Name\s*:' --include='*.php' --max-depth=1 . | head -1)
-          PLUGIN_SLUG=$(basename "${PLUGIN_FILE%.php}")
+          # Use package.json name as the slug (avoids repo name / file name case mismatch).
+          PLUGIN_SLUG=$(node -p "require('./package.json').name")
           VERSION="${GITHUB_REF#refs/tags/}"
           echo "slug=${PLUGIN_SLUG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
