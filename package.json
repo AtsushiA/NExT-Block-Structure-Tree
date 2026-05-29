@@ -6,9 +6,19 @@
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
 		"lint:js": "wp-scripts lint-js",
-		"plugin-zip": "wp-scripts plugin-zip"
+		"plugin-zip": "wp-scripts plugin-zip",
+		"prepare": "husky",
+		"test:e2e": "npx playwright test",
+		"test:e2e:ui": "npx playwright test --ui"
+	},
+	"lint-staged": {
+		"*.php": "composer run phpcs --"
 	},
 	"devDependencies": {
-		"@wordpress/scripts": "^30.0.0"
+		"@playwright/test": "^1.60.0",
+		"@wordpress/env": "^10.39.0",
+		"@wordpress/scripts": "^30.0.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.4.0"
 	}
 }
