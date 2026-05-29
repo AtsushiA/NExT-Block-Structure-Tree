@@ -6,10 +6,10 @@ use WP_UnitTestCase;
 
 class PluginActiveTest extends WP_UnitTestCase {
 
-	public function test_plugin_is_active(): void {
-		$this->assertTrue(
-			is_plugin_active( 'next-block-structure-tree/next-block-structure-tree.php' )
-		);
+	public function test_plugin_is_loaded(): void {
+		// install-wp-tests.sh 環境では DB に active_plugins が登録されないため
+		// is_plugin_active() は false を返す。代わりにプラグイン定数の存在を確認する.
+		$this->assertTrue( defined( 'NEXT_BST_VERSION' ) );
 	}
 
 	public function test_tree_builder_class_exists(): void {
