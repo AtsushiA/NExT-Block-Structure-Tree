@@ -9,7 +9,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-// このファイルは WP-CLI 環境でのみロードされる。
+// このファイルは WP-CLI 環境でのみロードされる.
 if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 	return;
 }
@@ -133,15 +133,18 @@ class Next_BST_CLI extends WP_CLI_Command {
 	 *     # Export a child page using hierarchical slug
 	 *     wp next-bst export --slug=about/team
 	 *
+	 * @param array $args       Positional arguments (unused).
+	 * @param array $assoc_args Associative arguments (post-type, status, output, all, id, slug).
+	 *
 	 * @subcommand export
 	 */
 	public function export( array $args, array $assoc_args ): void {
 		$post_type  = $assoc_args['post-type'] ?? 'page';
-		$status     = $assoc_args['status']    ?? 'publish';
+		$status     = $assoc_args['status'] ?? 'publish';
 		$output_dir = $this->resolve_output_dir( $assoc_args['output'] ?? './next-bst-export' );
 		$builder    = new Next_BST_Tree_Builder();
 
-		// ポスト投稿タイプが存在するか確認
+		// ポスト投稿タイプが存在するか確認.
 		if ( ! post_type_exists( $post_type ) ) {
 			WP_CLI::error( "投稿タイプ '{$post_type}' は存在しません。" );
 		}
@@ -180,6 +183,11 @@ class Next_BST_CLI extends WP_CLI_Command {
 
 	/**
 	 * Export all posts of a given post type.
+	 *
+	 * @param Next_BST_Tree_Builder $builder    Tree builder instance.
+	 * @param string                $post_type  Post type to query.
+	 * @param string                $status     Post status to include.
+	 * @param string                $output_dir Absolute output directory path.
 	 */
 	private function export_all(
 		Next_BST_Tree_Builder $builder,
@@ -188,13 +196,16 @@ class Next_BST_CLI extends WP_CLI_Command {
 		string $output_dir
 	): void {
 		$posts = get_posts(
-			[
+			array(
 				'post_type'      => $post_type,
 				'post_status'    => $status,
 				'posts_per_page' => -1,
-				'orderby'        => [ 'menu_order' => 'ASC', 'ID' => 'ASC' ],
+				'orderby'        => array(
+					'menu_order' => 'ASC',
+					'ID'         => 'ASC',
+				),
 				'no_found_rows'  => true,
-			]
+			)
 		);
 
 		if ( empty( $posts ) ) {
@@ -225,6 +236,10 @@ class Next_BST_CLI extends WP_CLI_Command {
 	 *   - Root page:       <output>/<slug>.txt
 	 *   - Child page:      <output>/<parent-slug>/<slug>.txt
 	 *   - Grandchild page: <output>/<grandparent>/<parent>/<slug>.txt
+	 *
+	 * @param Next_BST_Tree_Builder $builder    Tree builder instance.
+	 * @param WP_Post               $post       Post to export.
+	 * @param string                $output_dir Absolute output directory path.
 	 */
 	private function export_single(
 		Next_BST_Tree_Builder $builder,
@@ -250,10 +265,13 @@ class Next_BST_CLI extends WP_CLI_Command {
 	 *
 	 * Ancestors are resolved via get_ancestors() and ordered from top to bottom.
 	 * Post slugs are sanitized with sanitize_file_name() for filesystem safety.
+	 *
+	 * @param WP_Post $post       Post to build path for.
+	 * @param string  $output_dir Absolute output directory path.
 	 */
 	private function get_file_path( WP_Post $post, string $output_dir ): string {
-		$slug  = sanitize_file_name( $post->post_name ?: (string) $post->ID );
-		$parts = [];
+		$slug  = sanitize_file_name( $post->post_name ? $post->post_name : (string) $post->ID );
+		$parts = array();
 
 		if ( $post->post_parent ) {
 			foreach ( $this->get_ancestor_slugs( $post ) as $ancestor_slug ) {
@@ -269,6 +287,7 @@ class Next_BST_CLI extends WP_CLI_Command {
 	/**
 	 * Return ancestor slugs from top (root) to bottom (direct parent).
 	 *
+	 * @param WP_Post $post Post whose ancestors to resolve.
 	 * @return string[]
 	 */
 	private function get_ancestor_slugs( WP_Post $post ): array {
@@ -277,11 +296,11 @@ class Next_BST_CLI extends WP_CLI_Command {
 			get_ancestors( $post->ID, $post->post_type, 'post_type' )
 		);
 
-		$slugs = [];
+		$slugs = array();
 		foreach ( $ancestor_ids as $ancestor_id ) {
 			$ancestor = get_post( $ancestor_id );
 			if ( $ancestor instanceof WP_Post ) {
-				$slugs[] = $ancestor->post_name ?: (string) $ancestor_id;
+				$slugs[] = $ancestor->post_name ? $ancestor->post_name : (string) $ancestor_id;
 			}
 		}
 
@@ -300,6 +319,9 @@ class Next_BST_CLI extends WP_CLI_Command {
 	 *   ----------------------------------------
 	 *
 	 *   <block structure tree>
+	 *
+	 * @param Next_BST_Tree_Builder $builder Tree builder instance.
+	 * @param WP_Post               $post    Post to build content for.
 	 */
 	private function build_file_content(
 		Next_BST_Tree_Builder $builder,
@@ -310,14 +332,14 @@ class Next_BST_CLI extends WP_CLI_Command {
 
 		$header = implode(
 			"\n",
-			[
+			array(
 				"Title:    {$post->post_title}",
 				"Slug:     {$post->post_name}",
 				"ID:       {$post->ID}",
 				"URL:      {$url}",
 				"Modified: {$post->post_modified}",
 				$divider,
-			]
+			)
 		) . "\n\n";
 
 		return $header . $builder->generate_post_tree( $post );
@@ -329,6 +351,8 @@ class Next_BST_CLI extends WP_CLI_Command {
 	 * - Absolute paths are used as-is.
 	 * - Relative paths are resolved against the current working directory
 	 *   (the directory from which `wp` was invoked).
+	 *
+	 * @param string $path Raw output path from CLI argument.
 	 */
 	private function resolve_output_dir( string $path ): string {
 		if ( path_is_absolute( $path ) ) {

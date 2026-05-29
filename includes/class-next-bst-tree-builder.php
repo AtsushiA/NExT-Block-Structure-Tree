@@ -65,9 +65,9 @@ class Next_BST_Tree_Builder {
 	public function build_tree( array $block, string $prefix, bool $is_last ): array {
 		$title     = $this->get_block_label( $block );
 		$connector = $is_last ? '└── ' : '├── ';
-		$lines     = [ $prefix . $connector . $title ];
+		$lines     = array( $prefix . $connector . $title );
 
-		$children = $block['innerBlocks'] ?? [];
+		$children = $block['innerBlocks'] ?? array();
 		$count    = count( $children );
 
 		foreach ( $children as $i => $child ) {
@@ -104,7 +104,7 @@ class Next_BST_Tree_Builder {
 		);
 
 		// Root: post title.
-		$lines = [ $post->post_title ];
+		$lines = array( $post->post_title );
 		$count = count( $blocks );
 
 		if ( 0 === $count ) {
