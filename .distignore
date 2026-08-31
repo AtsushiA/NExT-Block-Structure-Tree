@@ -1,8 +1,40 @@
+# Dev config
 .claude
 .distignore
+.editorconfig
 .gitignore
+.wp-env.json
+.wp-env.override.json
 DESIGN.md
+
+# Node
 node_modules
 package.json
 package-lock.json
 src
+
+# Composer (dev only — no production PHP dependencies)
+vendor
+composer.json
+composer.lock
+
+# PHP dev tools
+phpcs.xml.dist
+phpunit.xml.dist
+
+# Tests & CI
+tests
+bin
+.github
+.husky
+playwright.config.ts
+
+# wp-env / debug
+debug.log
+db.sql
+
+# Test cache / reports
+.phpunit.result.cache
+test-results
+playwright-report
+blob-report
