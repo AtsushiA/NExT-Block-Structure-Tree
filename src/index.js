@@ -8,9 +8,9 @@ import { __ } from '@wordpress/i18n';
 /**
  * Recursively collect all core/block ref IDs from a block tree.
  *
- * @param {Object}  block Block object.
- * @param {Set}     refs  Accumulator set.
- * @returns {Set<number>} Set of ref IDs.
+ * @param {Object} block Block object.
+ * @param {Set}    refs  Accumulator set.
+ * @return {Set<number>} Set of ref IDs.
  */
 function collectPatternRefs( block, refs = new Set() ) {
 	if ( block.name === 'core/block' && block.attributes?.ref ) {
@@ -29,9 +29,9 @@ function collectPatternRefs( block, refs = new Set() ) {
  *   falls back to block type title if not yet loaded.
  * - Other blocks: uses block type title, appending "[name]" if metadata.name is set.
  *
- * @param {Object}          block      Block object.
+ * @param {Object}              block      Block object.
  * @param {Map<number, string>} patternMap Resolved pattern titles keyed by ref ID.
- * @returns {string} Display label.
+ * @return {string} Display label.
  */
 function getBlockLabel( block, patternMap ) {
 	const blockType = getBlockType( block.name );
@@ -59,7 +59,7 @@ function getBlockLabel( block, patternMap ) {
  * @param {string}              prefix     Current line prefix.
  * @param {boolean}             isLast     Whether this block is the last sibling.
  * @param {Map<number, string>} patternMap Resolved pattern titles.
- * @returns {string[]} Array of tree lines.
+ * @return {string[]} Array of tree lines.
  */
 function buildTree( block, prefix, isLast, patternMap ) {
 	const title = getBlockLabel( block, patternMap );
@@ -69,7 +69,9 @@ function buildTree( block, prefix, isLast, patternMap ) {
 	const children = block.innerBlocks ?? [];
 	children.forEach( ( child, i, arr ) => {
 		const childPrefix = prefix + ( isLast ? '    ' : '│   ' );
-		lines.push( ...buildTree( child, childPrefix, i === arr.length - 1, patternMap ) );
+		lines.push(
+			...buildTree( child, childPrefix, i === arr.length - 1, patternMap )
+		);
 	} );
 
 	return lines;
@@ -80,14 +82,16 @@ function buildTree( block, prefix, isLast, patternMap ) {
  *
  * @param {Object}              rootBlock  The root block object.
  * @param {Map<number, string>} patternMap Resolved pattern titles.
- * @returns {string} Tree-formatted string.
+ * @return {string} Tree-formatted string.
  */
 function generateTree( rootBlock, patternMap ) {
 	const lines = [ getBlockLabel( rootBlock, patternMap ) ];
 
 	const children = rootBlock.innerBlocks ?? [];
 	children.forEach( ( child, i, arr ) => {
-		lines.push( ...buildTree( child, '', i === arr.length - 1, patternMap ) );
+		lines.push(
+			...buildTree( child, '', i === arr.length - 1, patternMap )
+		);
 	} );
 
 	return lines.join( '\n' );
@@ -98,11 +102,11 @@ function generateTree( rootBlock, patternMap ) {
  * Falls back to document.execCommand for non-secure contexts (http://*.local etc.).
  *
  * @param {string} text Text to copy.
- * @returns {Promise<void>}
+ * @return {Promise<void>}
  */
 async function writeToClipboard( text ) {
-	if ( navigator.clipboard?.writeText ) {
-		await navigator.clipboard.writeText( text );
+	if ( window.navigator.clipboard?.writeText ) {
+		await window.navigator.clipboard.writeText( text );
 		return;
 	}
 
@@ -130,9 +134,8 @@ async function writeToClipboard( text ) {
  * @param {string[]|undefined} selectedClientIds Array of selected block client IDs.
  */
 async function handleCopy( selectedClientIds ) {
-	const { getBlock, getSelectedBlockClientIds } = select( 'core/block-editor' );
-	const { createNotice } = dispatch( 'core/notices' );
-
+	const { getBlock, getSelectedBlockClientIds } =
+		select( 'core/block-editor' );
 	// Fallback: use store when render-prop doesn't supply ids.
 	const ids =
 		Array.isArray( selectedClientIds ) && selectedClientIds.length
@@ -146,6 +149,8 @@ async function handleCopy( selectedClientIds ) {
 	if ( ! rootBlocks.length ) {
 		return;
 	}
+
+	const { createNotice } = dispatch( 'core/notices' );
 
 	// Collect all synced pattern ref IDs from the selected block trees.
 	const refs = new Set();
@@ -170,8 +175,7 @@ async function handleCopy( selectedClientIds ) {
 
 	const text = rootBlocks
 		.map( ( block, i, arr ) => {
-			const label =
-				arr.length > 1 ? `[選択ブロック ${ i + 1 }] ` : '';
+			const label = arr.length > 1 ? `[選択ブロック ${ i + 1 }] ` : '';
 			return label + generateTree( block, patternMap );
 		} )
 		.join( '\n\n' );
@@ -199,9 +203,7 @@ function NextBSTPlugin() {
 	return (
 		<BlockSettingsMenuControls>
 			{ ( { selectedClientIds } ) => (
-				<MenuItem
-					onClick={ () => handleCopy( selectedClientIds ) }
-				>
+				<MenuItem onClick={ () => handleCopy( selectedClientIds ) }>
 					{ __( 'Copy Block-Structure-Tree', 'next-bst' ) }
 				</MenuItem>
 			) }
