@@ -15,7 +15,7 @@
 		"*.php": "composer run phpcs --"
 	},
 	"devDependencies": {
-		"@playwright/test": "^1.60.0",
+		"@playwright/test": "^1.65.0",
 		"@wordpress/env": "^10.39.0",
 		"@wordpress/scripts": "^30.0.0",
 		"husky": "^9.1.7",
