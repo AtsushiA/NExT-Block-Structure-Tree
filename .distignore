@@ -38,3 +38,5 @@ db.sql
 test-results
 playwright-report
 blob-report
+
+/blueprint.json

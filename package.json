@@ -1,6 +1,6 @@
 {
 	"name": "next-block-structure-tree",
-	"version": "1.5.0",
+	"version": "1.5.1",
 	"description": "Adds Copy Block-Structure-Tree to the Gutenberg block context menu.",
 	"scripts": {
 		"build": "wp-scripts build",
@@ -16,7 +16,7 @@
 		"*.php": "composer run phpcs --"
 	},
 	"devDependencies": {
-		"@playwright/test": "^1.60.0",
+		"@playwright/test": "^1.65.0",
 		"@wordpress/env": "^10.39.0",
 		"@wordpress/scripts": "^30.0.0",
 		"husky": "^9.1.7",

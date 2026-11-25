@@ -8,9 +8,9 @@ import { __ } from '@wordpress/i18n';
 /**
  * Recursively collect all core/block ref IDs from a block tree.
  *
- * @param {Object}  block Block object.
- * @param {Set}     refs  Accumulator set.
- * @returns {Set<number>} Set of ref IDs.
+ * @param {Object} block Block object.
+ * @param {Set}    refs  Accumulator set.
+ * @return {Set<number>} Set of ref IDs.
  */
 function collectPatternRefs( block, refs = new Set() ) {
 	if ( block.name === 'core/block' && block.attributes?.ref ) {
@@ -29,9 +29,9 @@ function collectPatternRefs( block, refs = new Set() ) {
  *   falls back to block type title if not yet loaded.
  * - Other blocks: uses block type title, appending "[name]" if metadata.name is set.
  *
- * @param {Object}          block      Block object.
+ * @param {Object}              block      Block object.
  * @param {Map<number, string>} patternMap Resolved pattern titles keyed by ref ID.
- * @returns {string} Display label.
+ * @return {string} Display label.
  */
 function getBlockLabel( block, patternMap ) {
 	const blockType = getBlockType( block.name );
@@ -59,7 +59,7 @@ function getBlockLabel( block, patternMap ) {
  * @param {string}              prefix     Current line prefix.
  * @param {boolean}             isLast     Whether this block is the last sibling.
  * @param {Map<number, string>} patternMap Resolved pattern titles.
- * @returns {string[]} Array of tree lines.
+ * @return {string[]} Array of tree lines.
  */
 function buildTree( block, prefix, isLast, patternMap ) {
 	const title = getBlockLabel( block, patternMap );
@@ -69,7 +69,9 @@ function buildTree( block, prefix, isLast, patternMap ) {
 	const children = block.innerBlocks ?? [];
 	children.forEach( ( child, i, arr ) => {
 		const childPrefix = prefix + ( isLast ? '    ' : '│   ' );
-		lines.push( ...buildTree( child, childPrefix, i === arr.length - 1, patternMap ) );
+		lines.push(
+			...buildTree( child, childPrefix, i === arr.length - 1, patternMap )
+		);
 	} );
 
 	return lines;
@@ -80,44 +82,76 @@ function buildTree( block, prefix, isLast, patternMap ) {
  *
  * @param {Object}              rootBlock  The root block object.
  * @param {Map<number, string>} patternMap Resolved pattern titles.
- * @returns {string} Tree-formatted string.
+ * @return {string} Tree-formatted string.
  */
 function generateTree( rootBlock, patternMap ) {
 	const lines = [ getBlockLabel( rootBlock, patternMap ) ];
 
 	const children = rootBlock.innerBlocks ?? [];
 	children.forEach( ( child, i, arr ) => {
-		lines.push( ...buildTree( child, '', i === arr.length - 1, patternMap ) );
+		lines.push(
+			...buildTree( child, '', i === arr.length - 1, patternMap )
+		);
 	} );
 
 	return lines.join( '\n' );
 }
 
 /**
- * Write text to the clipboard.
- * Falls back to document.execCommand for non-secure contexts (http://*.local etc.).
+ * Copy text using the legacy document.execCommand('copy').
+ *
+ * Not subject to the Permissions Policy, so it also works inside
+ * cross-origin iframes without allow="clipboard-write"
+ * (e.g. WordPress Playground) and in non-secure contexts.
  *
  * @param {string} text Text to copy.
- * @returns {Promise<void>}
+ * @return {boolean} Whether the copy succeeded.
  */
-async function writeToClipboard( text ) {
-	if ( navigator.clipboard?.writeText ) {
-		await navigator.clipboard.writeText( text );
-		return;
-	}
-
-	// Fallback: execCommand('copy') — works in non-secure contexts.
-	const textarea = document.createElement( 'textarea' );
+function legacyCopy( text ) {
+	const { ownerDocument } = document.body;
+	const previousActive = ownerDocument.activeElement;
+	const textarea = ownerDocument.createElement( 'textarea' );
 	textarea.value = text;
+	textarea.setAttribute( 'readonly', '' );
 	textarea.style.cssText =
 		'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
-	document.body.appendChild( textarea );
+	ownerDocument.body.appendChild( textarea );
 	textarea.focus();
 	textarea.select();
-	const ok = document.execCommand( 'copy' );
-	document.body.removeChild( textarea );
-	if ( ! ok ) {
-		throw new Error( 'execCommand copy failed' );
+	let ok = false;
+	try {
+		ok = ownerDocument.execCommand( 'copy' );
+	} catch {
+		ok = false;
+	}
+	ownerDocument.body.removeChild( textarea );
+	previousActive?.focus?.();
+	return ok;
+}
+
+/**
+ * Write text to the clipboard.
+ *
+ * Tries the async Clipboard API first, and falls back to execCommand('copy')
+ * when it is unavailable or rejected — e.g. non-secure contexts
+ * (http://*.local) or cross-origin iframes where clipboard-write is blocked
+ * by the Permissions Policy (WordPress Playground).
+ *
+ * @param {string} text Text to copy.
+ * @return {Promise<void>}
+ */
+async function writeToClipboard( text ) {
+	if ( window.navigator.clipboard?.writeText ) {
+		try {
+			await window.navigator.clipboard.writeText( text );
+			return;
+		} catch {
+			// Fall through to the legacy method.
+		}
+	}
+
+	if ( ! legacyCopy( text ) ) {
+		throw new Error( 'Clipboard copy failed' );
 	}
 }
 
@@ -130,9 +164,8 @@ async function writeToClipboard( text ) {
  * @param {string[]|undefined} selectedClientIds Array of selected block client IDs.
  */
 async function handleCopy( selectedClientIds ) {
-	const { getBlock, getSelectedBlockClientIds } = select( 'core/block-editor' );
-	const { createNotice } = dispatch( 'core/notices' );
-
+	const { getBlock, getSelectedBlockClientIds } =
+		select( 'core/block-editor' );
 	// Fallback: use store when render-prop doesn't supply ids.
 	const ids =
 		Array.isArray( selectedClientIds ) && selectedClientIds.length
@@ -146,6 +179,8 @@ async function handleCopy( selectedClientIds ) {
 	if ( ! rootBlocks.length ) {
 		return;
 	}
+
+	const { createNotice } = dispatch( 'core/notices' );
 
 	// Collect all synced pattern ref IDs from the selected block trees.
 	const refs = new Set();
@@ -170,8 +205,7 @@ async function handleCopy( selectedClientIds ) {
 
 	const text = rootBlocks
 		.map( ( block, i, arr ) => {
-			const label =
-				arr.length > 1 ? `[選択ブロック ${ i + 1 }] ` : '';
+			const label = arr.length > 1 ? `[選択ブロック ${ i + 1 }] ` : '';
 			return label + generateTree( block, patternMap );
 		} )
 		.join( '\n\n' );
@@ -199,9 +233,7 @@ function NextBSTPlugin() {
 	return (
 		<BlockSettingsMenuControls>
 			{ ( { selectedClientIds } ) => (
-				<MenuItem
-					onClick={ () => handleCopy( selectedClientIds ) }
-				>
+				<MenuItem onClick={ () => handleCopy( selectedClientIds ) }>
 					{ __( 'Copy Block-Structure-Tree', 'next-bst' ) }
 				</MenuItem>
 			) }
