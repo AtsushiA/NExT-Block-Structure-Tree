@@ -18,7 +18,8 @@ jobs:
       - name: Get plugin metadata
         id: meta
         run: |
-          PLUGIN_SLUG=$(basename "$(pwd)")
+          # Use package.json name as the slug (avoids repo name / file name case mismatch).
+          PLUGIN_SLUG=$(node -p "require('./package.json').name")
           VERSION="${GITHUB_REF#refs/tags/}"
           echo "slug=${PLUGIN_SLUG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"

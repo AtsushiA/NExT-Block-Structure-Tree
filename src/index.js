@@ -98,30 +98,60 @@ function generateTree( rootBlock, patternMap ) {
 }
 
 /**
+ * Copy text using the legacy document.execCommand('copy').
+ *
+ * Not subject to the Permissions Policy, so it also works inside
+ * cross-origin iframes without allow="clipboard-write"
+ * (e.g. WordPress Playground) and in non-secure contexts.
+ *
+ * @param {string} text Text to copy.
+ * @return {boolean} Whether the copy succeeded.
+ */
+function legacyCopy( text ) {
+	const { ownerDocument } = document.body;
+	const previousActive = ownerDocument.activeElement;
+	const textarea = ownerDocument.createElement( 'textarea' );
+	textarea.value = text;
+	textarea.setAttribute( 'readonly', '' );
+	textarea.style.cssText =
+		'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+	ownerDocument.body.appendChild( textarea );
+	textarea.focus();
+	textarea.select();
+	let ok = false;
+	try {
+		ok = ownerDocument.execCommand( 'copy' );
+	} catch {
+		ok = false;
+	}
+	ownerDocument.body.removeChild( textarea );
+	previousActive?.focus?.();
+	return ok;
+}
+
+/**
  * Write text to the clipboard.
- * Falls back to document.execCommand for non-secure contexts (http://*.local etc.).
+ *
+ * Tries the async Clipboard API first, and falls back to execCommand('copy')
+ * when it is unavailable or rejected — e.g. non-secure contexts
+ * (http://*.local) or cross-origin iframes where clipboard-write is blocked
+ * by the Permissions Policy (WordPress Playground).
  *
  * @param {string} text Text to copy.
  * @return {Promise<void>}
  */
 async function writeToClipboard( text ) {
 	if ( window.navigator.clipboard?.writeText ) {
-		await window.navigator.clipboard.writeText( text );
-		return;
+		try {
+			await window.navigator.clipboard.writeText( text );
+			return;
+		} catch {
+			// Fall through to the legacy method.
+		}
 	}
 
-	// Fallback: execCommand('copy') — works in non-secure contexts.
-	const textarea = document.createElement( 'textarea' );
-	textarea.value = text;
-	textarea.style.cssText =
-		'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
-	document.body.appendChild( textarea );
-	textarea.focus();
-	textarea.select();
-	const ok = document.execCommand( 'copy' );
-	document.body.removeChild( textarea );
-	if ( ! ok ) {
-		throw new Error( 'execCommand copy failed' );
+	if ( ! legacyCopy( text ) ) {
+		throw new Error( 'Clipboard copy failed' );
 	}
 }
 
