@@ -6,7 +6,8 @@
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
 		"lint:js": "wp-scripts lint-js",
-		"plugin-zip": "wp-scripts plugin-zip",
+		"plugin-zip": "node node_modules/@wordpress/scripts/scripts/plugin-zip.js",
+		"build:release": "npm run build && npm run plugin-zip",
 		"prepare": "husky",
 		"test:e2e": "npx playwright test",
 		"test:e2e:ui": "npx playwright test --ui"
